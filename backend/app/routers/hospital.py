@@ -16,7 +16,7 @@ async def add_hospital(hospital: HospitalCreate):
 
     await manager.broadcast({
         "event": "hospital_created",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response
@@ -39,7 +39,7 @@ async def update(id: str, hospital: HospitalCreate):
 
     await manager.broadcast({
         "event": "hospital_updated",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response

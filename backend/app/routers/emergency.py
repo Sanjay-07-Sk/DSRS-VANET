@@ -16,7 +16,7 @@ async def create(emergency: EmergencyCreate):
 
     await manager.broadcast({
         "event": "emergency_created",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response
@@ -39,7 +39,7 @@ async def update(id: str, emergency: EmergencyCreate):
 
     await manager.broadcast({
         "event": "emergency_updated",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response

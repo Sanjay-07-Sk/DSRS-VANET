@@ -16,7 +16,7 @@ async def add_ambulance(ambulance: AmbulanceCreate):
 
     await manager.broadcast({
         "event": "vehicle_created",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response
@@ -39,7 +39,7 @@ async def update(id: str, ambulance: AmbulanceCreate):
 
     await manager.broadcast({
         "event": "vehicle_updated",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response

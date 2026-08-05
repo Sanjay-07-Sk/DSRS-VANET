@@ -1,0 +1,17 @@
+[
+    {
+        "id": "a97b0ca7-c64a-48e3-82bd-e8f38774a315",
+        "timestamp": "2026-08-05T18:49:28.472846+00:00",
+        "operation": "INSERT",
+        "table": "ambulances",
+        "status": "PENDING",
+        "payload": {
+            "vehicle_number": "TN31H4258",
+            "driver_name": "Krishna",
+            "status": "Available",
+            "latitude": 10.43,
+            "longitude": 13.2,
+            "speed": 65.0
+        }
+    }
+]

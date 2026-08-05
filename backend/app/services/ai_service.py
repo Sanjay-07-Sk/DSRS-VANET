@@ -135,7 +135,7 @@ def select_best_ambulance(latitude: float, longitude: float) -> Dict[str, Any]:
     """
     try:
         response = supabase.table("ambulances").select("*").execute()
-        ambulances: List[Dict[str, Any]] = response.data or []
+        ambulances: List[Dict[str, Any]] = response["record"] or []
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -202,7 +202,7 @@ def select_best_hospital(latitude: float, longitude: float) -> Dict[str, Any]:
     """
     try:
         response = supabase.table("hospitals").select("*").execute()
-        hospitals: List[Dict[str, Any]] = response.data or []
+        hospitals: List[Dict[str, Any]] = response["record"] or []
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -302,7 +302,7 @@ def generate_recommendation(emergency_id: str) -> Dict[str, Any]:
             .eq("id", emergency_id.strip())
             .execute()
         )
-        emergencies = response.data or []
+        emergencies = response["record"] or []
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

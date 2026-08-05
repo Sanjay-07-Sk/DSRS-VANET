@@ -1,11 +1,14 @@
-from app.config.database import supabase
-from app.websocket.manager import manager
 import asyncio
+from app.config.database import supabase
+from app.services.sync_service import store_record
+from app.websocket.manager import manager
 
 
 # Create Ambulance
 def create_ambulance(ambulance):
-
+    """
+    Creates an ambulance record using store_record() and broadcasts WebSocket event.
+    """
     data = {
         "vehicle_number": ambulance.vehicle_number,
         "driver_name": ambulance.driver_name,
@@ -15,18 +18,17 @@ def create_ambulance(ambulance):
         "speed": ambulance.speed
     }
 
-    response = supabase.table("ambulances").insert(data).execute()
+    response = store_record("INSERT", "ambulances", data)
 
     # Broadcast new ambulance location to all WebSocket clients
     try:
         asyncio.create_task(
             manager.broadcast({
                 "event": "vehicle_location",
-                "data": response.data
+                "data": response["record"]
             })
         )
     except RuntimeError:
-        # If no running event loop, ignore broadcasting
         pass
 
     return response
@@ -34,11 +36,17 @@ def create_ambulance(ambulance):
 
 # Get All Ambulances
 def get_all_ambulances():
+    """
+    Queries all ambulances from Supabase.
+    """
     return supabase.table("ambulances").select("*").execute()
 
 
 # Get Ambulance By ID
-def get_ambulance(id):
+def get_ambulance(id: str):
+    """
+    Queries ambulance record by ID from Supabase.
+    """
     return (
         supabase
         .table("ambulances")
@@ -49,24 +57,21 @@ def get_ambulance(id):
 
 
 # Update Ambulance
-def update_ambulance(id, ambulance):
+def update_ambulance(id: str, ambulance):
+    """
+    Updates an ambulance record using store_record() and broadcasts WebSocket event.
+    """
+    data = ambulance.model_dump() if hasattr(ambulance, "model_dump") else ambulance.dict()
+    data["id"] = id
 
-    data = ambulance.model_dump()
-
-    response = (
-        supabase
-        .table("ambulances")
-        .update(data)
-        .eq("id", id)
-        .execute()
-    )
+    response = store_record("UPDATE", "ambulances", data)
 
     # Broadcast updated ambulance location
     try:
         asyncio.create_task(
             manager.broadcast({
                 "event": "vehicle_updated",
-                "data": response.data
+                "data": response["record"]
             })
         )
     except RuntimeError:
@@ -76,15 +81,12 @@ def update_ambulance(id, ambulance):
 
 
 # Delete Ambulance
-def delete_ambulance(id):
-
-    response = (
-        supabase
-        .table("ambulances")
-        .delete()
-        .eq("id", id)
-        .execute()
-    )
+def delete_ambulance(id: str):
+    """
+    Deletes an ambulance record using store_record() and broadcasts WebSocket event.
+    """
+    payload = {"id": id}
+    response = store_record("DELETE", "ambulances", payload)
 
     # Broadcast deletion
     try:

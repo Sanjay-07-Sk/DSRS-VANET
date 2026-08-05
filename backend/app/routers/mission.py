@@ -16,7 +16,7 @@ async def create(mission: MissionCreate):
 
     await manager.broadcast({
         "event": "mission_created",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response
@@ -39,7 +39,7 @@ async def update(id: str, mission: MissionStatusUpdate):
 
     await manager.broadcast({
         "event": "mission_updated",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response
@@ -52,7 +52,7 @@ async def complete(id: str):
 
     await manager.broadcast({
         "event": "mission_completed",
-        "data": response.data
+        "data": response["record"]
     })
 
     return response

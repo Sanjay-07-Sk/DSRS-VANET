@@ -7,6 +7,7 @@ from app.routers.mission import router as mission_router
 from app.routers.emergency import router as emergency_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.websocket import router as websocket_router
+from app.routers.ai import router as ai_router
 
 app = FastAPI()
 
@@ -18,6 +19,7 @@ app.include_router(emergency_router)
 app.include_router(mission_router)
 app.include_router(dashboard_router)
 app.include_router(websocket_router)
+app.include_router(ai_router)
 
 @app.get("/")
 def root():

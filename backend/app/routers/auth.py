@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.auth_schema import RegisterUser, LoginUser, TokenResponse
 from app.services.auth_service import register_user, login_user
 from app.middleware.auth import get_current_user
-
+from fastapi.security import OAuth2PasswordRequestForm
 router = APIRouter(
     prefix="/api/auth",
     tags=["Authentication"]
@@ -39,19 +39,20 @@ def register(user: RegisterUser):
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
     summary="Login User",
-    description="Authenticates user credentials and returns a JWT access token valid for 24 hours."
+    description="Authenticates user credentials and returns a JWT access token."
 )
-def login(user: LoginUser):
-    """
-    Authenticate user with email and password.
-    """
-    if not user.email or not user.password:
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+
+    if not form_data.username or not form_data.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email and password are required"
         )
 
-    return login_user(email=user.email, password=user.password)
+    return login_user(
+        email=form_data.username,
+        password=form_data.password
+    )
 
 
 @router.get(

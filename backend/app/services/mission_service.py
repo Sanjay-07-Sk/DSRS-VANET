@@ -1,3 +1,4 @@
+import uuid
 from app.config.database import supabase
 from app.services.sync_service import store_record
 
@@ -6,15 +7,11 @@ from app.services.sync_service import store_record
 def create_mission(mission):
     """
     Creates a new rescue mission record via store_record().
+    Generates UUID id client-side if missing.
     """
-    payload = {
-        "mission_code": mission.mission_code,
-        "ambulance_id": mission.ambulance_id,
-        "hospital_id": mission.hospital_id,
-        "emergency_id": mission.emergency_id,
-        "status": mission.status,
-        "eta": mission.eta
-    }
+    payload = mission.model_dump()
+    if "id" not in payload or not payload["id"]:
+        payload["id"] = str(uuid.uuid4())
     return store_record("INSERT", "missions", payload)
 
 

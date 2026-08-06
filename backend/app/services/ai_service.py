@@ -1,5 +1,6 @@
 import math
 from typing import Dict, Any, List, Optional
+# pyrefly: ignore [missing-import]
 from fastapi import HTTPException, status
 from app.config.database import supabase
 
@@ -135,7 +136,7 @@ def select_best_ambulance(latitude: float, longitude: float) -> Dict[str, Any]:
     """
     try:
         response = supabase.table("ambulances").select("*").execute()
-        ambulances: List[Dict[str, Any]] = response["record"] or []
+        ambulances: List[Dict[str, Any]] = response.data or []
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -202,7 +203,7 @@ def select_best_hospital(latitude: float, longitude: float) -> Dict[str, Any]:
     """
     try:
         response = supabase.table("hospitals").select("*").execute()
-        hospitals: List[Dict[str, Any]] = response["record"] or []
+        hospitals: List[Dict[str, Any]] = response.data or []
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -302,7 +303,7 @@ def generate_recommendation(emergency_id: str) -> Dict[str, Any]:
             .eq("id", emergency_id.strip())
             .execute()
         )
-        emergencies = response["record"] or []
+        emergencies = response.data or []
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

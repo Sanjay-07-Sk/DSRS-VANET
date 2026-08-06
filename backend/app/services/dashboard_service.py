@@ -1,38 +1,46 @@
+from typing import Dict, Any
 from app.config.database import supabase
 
 
-def dashboard():
-
+def dashboard() -> Dict[str, Any]:
+    """
+    Returns full snapshot of ambulances, hospitals, emergencies, and missions.
+    """
     ambulances = supabase.table("ambulances").select("*").execute()
     hospitals = supabase.table("hospitals").select("*").execute()
     emergencies = supabase.table("emergencies").select("*").execute()
     missions = supabase.table("missions").select("*").execute()
 
     return {
-        "ambulances": ambulances.data,
-        "hospitals": hospitals.data,
-        "emergencies": emergencies.data,
-        "missions": missions.data
+        "ambulances": ambulances.data or [],
+        "hospitals": hospitals.data or [],
+        "emergencies": emergencies.data or [],
+        "missions": missions.data or []
     }
 
 
-def statistics():
+def statistics() -> Dict[str, Any]:
+    """
+    Calculates summary metrics for dashboard.
+    """
+    ambulances = supabase.table("ambulances").select("*").execute().data or []
+    hospitals = supabase.table("hospitals").select("*").execute().data or []
+    emergencies = supabase.table("emergencies").select("*").execute().data or []
+    missions = supabase.table("missions").select("*").execute().data or []
 
-    ambulances = supabase.table("ambulances").select("*").execute().data
-    hospitals = supabase.table("hospitals").select("*").execute().data
-    emergencies = supabase.table("emergencies").select("*").execute().data
-    missions = supabase.table("missions").select("*").execute().data
-
-    available = len([a for a in ambulances if a["status"] == "AVAILABLE"])
+    available = len([
+        a for a in ambulances
+        if str(a.get("status", "")).strip().upper() == "AVAILABLE"
+    ])
 
     active = len([
         m for m in missions
-        if m["status"] != "COMPLETED"
+        if str(m.get("status", "")).strip().upper() != "COMPLETED"
     ])
 
     pending = len([
         e for e in emergencies
-        if e["status"] != "COMPLETED"
+        if str(e.get("status", "")).strip().upper() != "COMPLETED"
     ])
 
     return {
@@ -45,12 +53,14 @@ def statistics():
     }
 
 
-def live():
-
+def live() -> Dict[str, Any]:
+    """
+    Returns real-time locations of ambulances and emergencies for live map view.
+    """
     ambulances = supabase.table("ambulances").select("*").execute()
     emergencies = supabase.table("emergencies").select("*").execute()
 
     return {
-        "ambulances": ambulances.data,
-        "emergencies": emergencies.data
+        "ambulances": ambulances.data or [],
+        "emergencies": emergencies.data or []
     }

@@ -1,6 +1,5 @@
 from typing import List
-# pyrefly: ignore [missing-import]
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, HTTPException, Depends
 from app.schemas.sync_schema import (
     SyncRecord,
     UploadResponse,
@@ -12,10 +11,12 @@ from app.services.sync_service import (
     get_sync_status,
     clear_logs
 )
+from app.middleware.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/sync",
-    tags=["Sync Module"]
+    tags=["Sync Module"],
+    dependencies=[Depends(get_current_user)]
 )
 
 

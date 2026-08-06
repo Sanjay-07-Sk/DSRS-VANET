@@ -30,6 +30,43 @@ _previous_connection_state: Optional[bool] = None
 _last_sync_timestamp: Optional[str] = None
 
 
+class SyncResult:
+    """
+    Unified result object returned by store_record().
+    Provides attribute access (.data, .record, .mode, .message) and dictionary subscript access.
+    """
+    def __init__(self, data: Any, mode: str, message: str = ""):
+        if isinstance(data, list):
+            self.data = data
+        elif data is not None:
+            self.data = [data]
+        else:
+            self.data = []
+        self.mode = mode
+        self.message = message
+        self.success = True
+        self.record = self.data[0] if self.data else {}
+
+    def __getitem__(self, item: str) -> Any:
+        if item == "record":
+            return self.record
+        return getattr(self, item)
+
+    def get(self, item: str, default: Any = None) -> Any:
+        if item == "record":
+            return self.record
+        return getattr(self, item, default)
+
+    def dict(self) -> Dict[str, Any]:
+        return {
+            "success": self.success,
+            "message": self.message,
+            "mode": self.mode,
+            "data": self.data,
+            "record": self.record
+        }
+
+
 def _ensure_file_exists() -> None:
     """
     Ensure that the offline directory and pending_logs.json file exist.
@@ -70,7 +107,7 @@ def save_offline(operation: str, table: str, payload: Dict[str, Any]) -> Dict[st
         with open(PENDING_LOGS_FILE, "w", encoding="utf-8") as f:
             json.dump(pending_logs, f, indent=4)
 
-        logger.info(f"Offline Save: Record {record_id} saved locally for table '{table}'")
+        logger.info(f"Offline Save: Operation '{operation.upper()}' saved locally for table '{table}' (ID: {record_id})")
         return record
 
     except Exception as e:
@@ -142,7 +179,7 @@ def clear_logs() -> Dict[str, str]:
 
 def _execute_supabase_op(operation: str, table: str, payload: Dict[str, Any]) -> Any:
     """
-    Helper function to execute table operations against Supabase.
+    Helper function to execute database table operations against Supabase.
     """
     op = operation.upper()
     if op == "INSERT":
@@ -150,7 +187,7 @@ def _execute_supabase_op(operation: str, table: str, payload: Dict[str, Any]) ->
     elif op == "UPDATE":
         record_id = payload.get("id")
         if not record_id:
-            raise ValueError("Payload missing 'id' field for UPDATE operation")
+            return supabase.table(table).upsert(payload).execute()
         return supabase.table(table).update(payload).eq("id", record_id).execute()
     elif op == "DELETE":
         record_id = payload.get("id")
@@ -200,7 +237,6 @@ def upload_pending() -> Dict[str, Any]:
     uploaded_count = 0
     failed_count = 0
 
-    # Backoff retry delays: 1 second, 2 seconds, 4 seconds
     retry_delays = [1, 2, 4]
 
     for record in pending_records:
@@ -212,7 +248,6 @@ def upload_pending() -> Dict[str, Any]:
         success = False
         last_error = ""
 
-        # Attempt up to 3 retries with exponential backoff
         for attempt in range(3):
             try:
                 _execute_supabase_op(operation, table, payload)
@@ -246,10 +281,7 @@ def upload_pending() -> Dict[str, Any]:
                 "error": last_error
             })
 
-    # Automatically delete successfully uploaded records
     delete_uploaded(uploaded_ids)
-
-    # Update last sync timestamp
     _last_sync_timestamp = datetime.now(timezone.utc).isoformat()
 
     remaining_count = len(get_pending_logs())
@@ -266,36 +298,38 @@ def upload_pending() -> Dict[str, Any]:
     }
 
 
-def store_record(operation: str, table: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def store_record(operation: str, table: str, payload: Dict[str, Any]) -> SyncResult:
     """
-    Stores data by attempting direct upload to Supabase if internet is available.
-    If offline or upload fails, falls back to offline storage in pending_logs.json.
+    Reusable internal service function called by all CRUD services.
+    Attempts direct upload to Supabase if internet is available.
+    If offline or upload fails, saves record locally to pending_logs.json and returns OFFLINE result.
 
     :param operation: Database operation (INSERT, UPDATE, DELETE)
     :param table: Target database table name
-    :param payload: Record payload data
-    :return: Response dictionary indicating ONLINE or OFFLINE storage mode
+    :param payload: Record data payload
+    :return: SyncResult object containing .data, .record, .mode ("ONLINE"/"OFFLINE"), and .message
     """
     if is_connected():
         try:
             res = _execute_supabase_op(operation, table, payload)
-            returned_data = res.data[0] if res.data else payload
-            logger.info(f"Direct Upload Success: Record stored in table '{table}'")
-            return {
-                "message": f"Record uploaded directly to Supabase table '{table}'.",
-                "mode": "ONLINE",
-                "record": returned_data
-            }
+            returned_data = res.data if res.data else [payload]
+            logger.info(f"Direct Upload Success: Operation '{operation}' executed on table '{table}'")
+            return SyncResult(
+                data=returned_data,
+                mode="ONLINE",
+                message=f"Uploaded directly to Supabase table '{table}'."
+            )
         except Exception as e:
-            logger.warning(f"Direct upload failed despite internet check: {str(e)}. Falling back to offline storage.")
+            logger.warning(
+                f"Direct upload failed despite internet check: {str(e)}. Falling back to offline storage."
+            )
 
-    # Fallback to offline save
     saved_record = save_offline(operation, table, payload)
-    return {
-        "message": "Internet unavailable or upload failed. Record saved locally to offline log.",
-        "mode": "OFFLINE",
-        "record": saved_record
-    }
+    return SyncResult(
+        data=[saved_record.get("payload", payload)],
+        mode="OFFLINE",
+        message="Internet unavailable or database unreachable. Record saved locally to offline log."
+    )
 
 
 def get_sync_status() -> Dict[str, Any]:
@@ -309,7 +343,6 @@ def get_sync_status() -> Dict[str, Any]:
 
     current_online = is_connected()
 
-    # Log state changes (Internet Lost / Internet Restored)
     if _previous_connection_state is not None:
         if _previous_connection_state and not current_online:
             logger.warning("Internet Lost: Network connection disconnected.")

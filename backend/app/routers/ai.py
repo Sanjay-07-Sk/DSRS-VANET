@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, HTTPException, Depends
 from app.schemas.ai_schema import (
     PriorityRequest,
     PriorityResponse,
@@ -18,10 +18,12 @@ from app.services.ai_service import (
     estimate_eta,
     generate_recommendation
 )
+from app.middleware.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/ai",
-    tags=["AI Module"]
+    tags=["AI Module"],
+    dependencies=[Depends(get_current_user)]
 )
 
 

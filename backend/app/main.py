@@ -12,6 +12,7 @@ from app.routers.websocket import router as websocket_router
 from app.routers.ai import router as ai_router
 from app.routers.sync import router as sync_router
 from app.services.sync_service import upload_pending, is_connected, get_pending_logs, logger
+from app.routers.reports import router as reports_router
 
 app = FastAPI(
     title="DSRS-VANET API",
@@ -29,6 +30,7 @@ app.include_router(dashboard_router)
 app.include_router(websocket_router)
 app.include_router(ai_router)
 app.include_router(sync_router)
+app.include_router(reports_router)
 
 
 async def auto_sync_worker():

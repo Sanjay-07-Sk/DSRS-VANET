@@ -1,0 +1,6 @@
+{
+  "name": "DSRS-VANET — Emergency Command & Control",
+  "description": "Disaster Smart Response System (DSRS-VANET) Emergency Command & Control Dashboard featuring live monitoring, fleet management, AI analytics, hospital status, and reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

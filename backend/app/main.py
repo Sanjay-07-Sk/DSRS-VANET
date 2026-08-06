@@ -1,5 +1,6 @@
 import asyncio
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.config.database import supabase
 
 from app.routers.auth import router as auth_router
@@ -11,12 +12,22 @@ from app.routers.dashboard import router as dashboard_router
 from app.routers.websocket import router as websocket_router
 from app.routers.ai import router as ai_router
 from app.routers.sync import router as sync_router
+from app.routers.reports import router as reports_router
 from app.services.sync_service import upload_pending, is_connected, get_pending_logs, logger
 
 app = FastAPI(
     title="DSRS-VANET API",
     description="Disaster Smart Rescue System using VANET - FastAPI Backend with Offline Sync Engine",
     version="1.0.0"
+)
+
+# Enable CORS for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register Routers
@@ -29,6 +40,7 @@ app.include_router(dashboard_router)
 app.include_router(websocket_router)
 app.include_router(ai_router)
 app.include_router(sync_router)
+app.include_router(reports_router)
 
 
 async def auto_sync_worker():

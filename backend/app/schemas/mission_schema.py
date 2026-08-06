@@ -1,21 +1,34 @@
 from pydantic import BaseModel, Field
-from typing import Union
-
+from typing import Optional
 
 class MissionCreate(BaseModel):
-    """
-    Schema for creating a rescue mission.
-    """
-    mission_code: str = Field(..., description="Unique mission code identifier")
-    ambulance_id: str = Field(..., description="UUID of assigned ambulance")
-    hospital_id: str = Field(..., description="UUID of assigned hospital")
-    emergency_id: str = Field(..., description="UUID of reported emergency")
-    status: str = Field(..., description="Mission status, e.g. ASSIGNED, IN_PROGRESS, COMPLETED")
-    eta: Union[float, int] = Field(..., description="Estimated travel time in minutes")
+    emergencyId: Optional[str] = None
+    emergencyType: Optional[str] = "Road Accident"
+    location: Optional[str] = "Anna Nagar, Chennai"
+    zone: Optional[str] = "Zone 1 (North)"
+    ambulanceId: Optional[str] = "AMB-03"
+    hospitalId: Optional[str] = "HOSP-01"
+    hospitalName: Optional[str] = "City Hospital"
+    etaMinutes: Optional[float] = 3.5
+    acrnConfidence: Optional[int] = 94
 
+class MissionUpdate(BaseModel):
+    status: Optional[str] = None
+    stepIndex: Optional[int] = None
+    completedAt: Optional[str] = None
 
-class MissionStatusUpdate(BaseModel):
-    """
-    Schema for updating mission status.
-    """
-    status: str = Field(..., description="Updated mission status string")
+class MissionResponse(BaseModel):
+    id: str
+    emergencyId: str
+    emergencyType: str
+    location: str
+    zone: str
+    ambulanceId: str
+    hospitalId: str
+    hospitalName: str
+    status: str
+    etaMinutes: float
+    acrnConfidence: int
+    stepIndex: int
+    createdAt: Optional[str] = None
+    completedAt: Optional[str] = None

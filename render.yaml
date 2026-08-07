@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: dsrs-vanet-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Secrets — configure values in the Render dashboard (NOT committed here).
+      - key: SUPABASE_URL
+        description: Supabase project REST endpoint URL.
+        sync: false
+      - key: SUPABASE_KEY
+        description: Supabase anon/service key used server-side to query the users table.
+        sync: false
+      # CORS allow-list. Defaults to localhost for local dev; replace with the
+      # deployed frontend origin(s) before going live.
+      - key: CORS_ORIGINS
+        description: Comma-separated frontend origins allowed by CORS (e.g. https://app.example.com).
+        value: http://localhost:5173,http://127.0.0.1:5173

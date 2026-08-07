@@ -1,5 +1,7 @@
 import asyncio
+import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.config.database import supabase
 
 from app.routers.auth import router as auth_router
@@ -19,6 +21,25 @@ app = FastAPI(
     title="DSRS-VANET API",
     description="Disaster Smart Rescue System using VANET - FastAPI Backend with Offline Sync Engine",
     version="1.0.0"
+)
+
+
+def _get_cors_origins() -> list[str]:
+    configured = os.getenv("CORS_ORIGINS", "").strip()
+    if configured:
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register Routers

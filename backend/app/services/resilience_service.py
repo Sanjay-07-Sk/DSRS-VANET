@@ -47,6 +47,22 @@ def on_network_offline(state: DashboardState) -> DashboardState:
 		raise ValueError("Offline transition is only valid after a degraded mission has been established.")
 	mission = state.mission.model_copy(update={"networkMode": CommunicationState.OFFLINE}) if state.mission else None
 	buffered_events = _buffered_events()
+	fallback_packets = [
+		FallbackPacket(
+			id="fallback-packet-1",
+			packetId="LORA-DSRS-001",
+			source="A03",
+			destination="H02",
+			payload={
+				"missionId": state.mission.id if state.mission else None,
+				"mode": "OFFLINE",
+				"message": "Fallback channel active",
+			},
+			sentAt="2026-08-07T09:10:16Z",
+			acknowledgedAt=None,
+			status="QUEUED",
+		)
+	]
 	return _copy_state(
 		state,
 		communicationState=CommunicationState.OFFLINE,
@@ -55,6 +71,7 @@ def on_network_offline(state: DashboardState) -> DashboardState:
 		dkcActive=True,
 		eventBufferActive=True,
 		fallbackTransport=NETWORK_FALLBACK,
+		fallbackPackets=fallback_packets,
 		mission=mission,
 		bufferedEvents=buffered_events,
 		timeline=state.timeline + [

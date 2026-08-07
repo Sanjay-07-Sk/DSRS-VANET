@@ -60,6 +60,7 @@ class DemoStateManager:
 	_state: DashboardState = field(default_factory=_initial_state)
 	_ambulance_evaluations: List[AmbulanceEvaluation] = field(default_factory=list)
 	_hospital_evaluations: List[HospitalEvaluation] = field(default_factory=list)
+	_duplicate_dispatch_blocked: int = 0
 	_lock: RLock = field(default_factory=RLock, repr=False)
 
 	def get_state(self) -> DashboardState:
@@ -71,6 +72,7 @@ class DemoStateManager:
 			self._state = _initial_state()
 			self._ambulance_evaluations = []
 			self._hospital_evaluations = []
+			self._duplicate_dispatch_blocked = 0
 			return self._state.model_copy(deep=True)
 
 	def create_incident(self) -> DashboardState:
@@ -108,6 +110,23 @@ class DemoStateManager:
 
 	def dispatch(self) -> DashboardState:
 		with self._lock:
+			if self._state.mission is not None and self._state.missionLock.locked:
+				self._duplicate_dispatch_blocked += 1
+				self._state = self._state.model_copy(update={
+					"missionLock": self._state.missionLock.model_copy(update={
+						"lockReason": f"Mission dispatched. Duplicate dispatch blocked ({self._duplicate_dispatch_blocked}).",
+					}),
+					"timeline": self._state.timeline + [
+						TimelineEvent(
+							id=f"duplicate-dispatch-{self._duplicate_dispatch_blocked}",
+							timestamp=f"2026-08-07T09:12:{self._duplicate_dispatch_blocked:02d}Z",
+							type="mission_lock",
+							title="Duplicate dispatch blocked",
+							description="Active mission lock prevented duplicate dispatch.",
+						),
+					],
+				})
+				raise ValueError("Duplicate dispatch blocked by active mission lock.")
 			if self._state.incident is None or not self._ambulance_evaluations or not self._hospital_evaluations:
 				raise ValueError("Demo incident must be created before dispatch.")
 			selected_ambulance, selected_hospital = select_winners(self._ambulance_evaluations, self._hospital_evaluations)

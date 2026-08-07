@@ -377,5 +377,110 @@ class MovementInvalidTransitionTestCase(unittest.TestCase):
         self.assertEqual(client.get("/api/state").json(), initial)
 
 
+class Stage6ReadinessTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
+        os.environ.setdefault("SUPABASE_KEY", "dummy-key")
+
+        from app.main import app
+        from app.middleware.auth import get_current_user
+
+        app.dependency_overrides[get_current_user] = lambda: {"email": "demo@example.com", "role": "ADMIN"}
+        cls.app = app
+
+    def setUp(self) -> None:
+        state_manager.reset()
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+
+        return TestClient(self.app)
+
+    def test_duplicate_dispatch_blocked(self) -> None:
+        client = self._client()
+        client.post("/api/demo/incident")
+        first = client.post("/api/demo/dispatch")
+        self.assertEqual(first.status_code, 200)
+        before = client.get("/api/state").json()
+
+        duplicate = client.post("/api/demo/dispatch")
+        self.assertEqual(duplicate.status_code, 409)
+        after = client.get("/api/state").json()
+
+        self.assertEqual(before["mission"]["id"], "DSRS-2026-0019")
+        self.assertEqual(after["mission"]["id"], "DSRS-2026-0019")
+        self.assertEqual(before["selectedAmbulance"]["id"], "A03")
+        self.assertEqual(after["selectedAmbulance"]["id"], "A03")
+        self.assertEqual(before["selectedHospital"]["id"], "H02")
+        self.assertEqual(after["selectedHospital"]["id"], "H02")
+        self.assertEqual(before["route"], after["route"])
+        self.assertTrue(after["missionLock"]["locked"])
+        self.assertIn("Duplicate dispatch blocked", after["missionLock"]["lockReason"])
+
+    def test_offline_fallback_packet_contract(self) -> None:
+        client = self._client()
+        client.post("/api/demo/incident")
+        client.post("/api/demo/dispatch")
+        client.post("/api/network/fail")
+        offline = client.post("/api/network/offline")
+        self.assertEqual(offline.status_code, 200)
+        payload = offline.json()
+
+        self.assertEqual(payload["fallbackTransport"], "LORA_SIMULATED")
+        self.assertTrue(len(payload["fallbackPackets"]) >= 1)
+        packet = payload["fallbackPackets"][0]
+        self.assertEqual(packet["packetId"], "LORA-DSRS-001")
+        self.assertEqual(packet["source"], "A03")
+        self.assertEqual(packet["destination"], "H02")
+        self.assertEqual(packet["status"], "QUEUED")
+
+    def test_state_contract_complete(self) -> None:
+        client = self._client()
+        state = client.get("/api/state")
+        self.assertEqual(state.status_code, 200)
+        body = state.json()
+
+        required = {
+            "status",
+            "incident",
+            "priority",
+            "ambulances",
+            "hospitals",
+            "selectedAmbulance",
+            "selectedHospital",
+            "mission",
+            "timeline",
+            "route",
+            "communicationState",
+            "autonomousNodeActive",
+            "offlineRoutingActive",
+            "dkcActive",
+            "eventBufferActive",
+            "bufferedEvents",
+            "syncProgress",
+            "syncSummary",
+            "movementActive",
+            "routeIndex",
+            "missionLock",
+            "fallbackTransport",
+            "fallbackPackets",
+            "systemMessage",
+        }
+        self.assertTrue(required.issubset(set(body.keys())))
+
+    def test_cors_preflight_localhost(self) -> None:
+        client = self._client()
+        response = client.options(
+            "/api/state",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertIn(response.status_code, (200, 204))
+        self.assertEqual(response.headers.get("access-control-allow-origin"), "http://localhost:5173")
+
+
 if __name__ == "__main__":
     unittest.main()
